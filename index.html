@@ -386,33 +386,33 @@ function migrateFromV1(){
   }catch(e){ return null; }
 }
 
+function hardcodedFlexoes(){
+  return {"habits":[{"id":"flexoes","name":"Flexões","emoji":"💪","type":"reps","unit":"reps","target":100,"unlockedAchievements":[],"months":[{"reps":30,"unlocked":true,"days":[30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30],"notes":{},"changelog":[],"manualDate":"2026-06-17"},{"reps":32,"unlocked":true,"days":[32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32],"notes":{},"changelog":[],"manualDate":"2026-07-17"},{"reps":34,"unlocked":true,"days":[34,34,"x",34,34,34,34,34,34,34,34,34,34,34,34,34,"x",34,34,34,34,34,34,"x",34,34,34,34,34,34],"notes":{},"changelog":[],"manualDate":"2026-08-17"},{"reps":34,"unlocked":true,"days":[34,34,34,34,34,"x",34,34,34,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"notes":{},"changelog":[],"manualDate":"2026-09-17"}]}]};
+}
+
 function loadState(){
   try{
     const raw=localStorage.getItem(KEY);
     if(raw){
       const s=JSON.parse(raw);
-      // migrate: ensure each habit has unlockedAchievements
       if(s.habits) s.habits.forEach(h=>{ if(!h.unlockedAchievements) h.unlockedAchievements=[]; });
-      // Fix flexoes dates and month 2 failures if dates are wrong
+      // If flexoes has no real data (fresh localStorage), seed with hardcoded
       const flexHabit=s.habits&&s.habits.find(h=>h.id==='flexoes');
-      if(flexHabit&&flexHabit.months){
-        const correctDates=['2026-06-17','2026-07-17','2026-08-17'];
-        flexHabit.months.forEach((m,mi)=>{
-          if(mi<3) m.manualDate=correctDates[mi];
-          // Force last 2 days of month 2 as done (always overwrite)
-          if(mi===1){
-            m.days[28]=m.reps||30;
-            m.days[29]=m.reps||30;
-          }
-        });
+      if(!flexHabit||!flexHabit.months||flexHabit.months.length===0){
+        const hc=hardcodedFlexoes();
+        if(!s.habits) s.habits=[];
+        s.habits=s.habits.filter(h=>h.id!=='flexoes');
+        s.habits.unshift(hc.habits[0]);
+        localStorage.setItem(KEY,JSON.stringify(s));
       }
       return s;
     }
-    // Try migrate from v1
-    const migrated=migrateFromV1();
-    if(migrated){ localStorage.setItem(KEY,JSON.stringify(migrated)); return migrated; }
+    // No localStorage — use hardcoded data
+    const hc=hardcodedFlexoes();
+    localStorage.setItem(KEY,JSON.stringify(hc));
+    return hc;
   }catch(e){}
-  return defaultState();
+  return hardcodedFlexoes();
 }
 
 function saveState(){ localStorage.setItem(KEY,JSON.stringify(state)); }
