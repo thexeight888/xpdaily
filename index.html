@@ -216,6 +216,43 @@
     @media(max-width:480px){ .grid{grid-template-columns:repeat(auto-fill,minmax(86px,1fr));} .stats{gap:5px;} }
   </style>
 </head>
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDTy4oASOs2loX9gxxxnxN9Q8yx7YKF-TM",
+    authDomain: "xpdaily-1ffe9.firebaseapp.com",
+    projectId: "xpdaily-1ffe9",
+    storageBucket: "xpdaily-1ffe9.firebasestorage.app",
+    messagingSenderId: "386284022827",
+    appId: "1:386284022827:web:a103a6e50da3c39c58ce6e"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const USER_DOC = doc(db, "users", "alex");
+
+  // Expose to global scope for the main script
+  window._fbSave = async function(stateObj) {
+    try {
+      await setDoc(USER_DOC, { data: JSON.stringify(stateObj), updatedAt: Date.now() });
+    } catch(e) { console.warn("Firebase save failed:", e); }
+  };
+
+  window._fbLoad = async function() {
+    try {
+      const snap = await getDoc(USER_DOC);
+      if (snap.exists()) return JSON.parse(snap.data().data);
+    } catch(e) { console.warn("Firebase load failed:", e); }
+    return null;
+  };
+
+  // Signal that Firebase is ready
+  window._fbReady = true;
+  document.dispatchEvent(new Event("fb-ready"));
+</script>
 <body>
 
 <nav id="nav"></nav>
@@ -420,11 +457,39 @@ function loadState(){
   return hardcodedFlexoes();
 }
 
-function saveState(){ localStorage.setItem(KEY,JSON.stringify(state)); }
+function saveState(){
+  localStorage.setItem(KEY,JSON.stringify(state));
+  // Also sync to Firebase (fire-and-forget)
+  if(window._fbSave) window._fbSave(state);
+}
 
+// ── INIT ─────────────────────────────────────────────────
+// Load from localStorage first (instant), then check Firebase for newer data
 let state=loadState();
 let activeHabitId=state.habits.length>0?state.habits[0].id:null;
 let activeMonth=0;
+
+// After Firebase is ready, check if cloud has newer state
+async function syncFromCloud(){
+  if(!window._fbLoad) return;
+  try{
+    const cloudState = await window._fbLoad();
+    if(!cloudState || !cloudState.habits) return;
+    // Use cloud state (it's the authoritative source)
+    cloudState.habits.forEach(h=>{ if(!h.unlockedAchievements) h.unlockedAchievements=[]; });
+    state = cloudState;
+    activeHabitId = state.habits.length>0 ? state.habits[0].id : null;
+    localStorage.setItem(KEY, JSON.stringify(state));
+    retroCheckAchievements();
+    render();
+  }catch(e){ console.warn("Cloud sync failed:",e); }
+}
+
+if(window._fbReady){
+  syncFromCloud();
+} else {
+  document.addEventListener("fb-ready", syncFromCloud);
+}
 
 // Retroactively unlock achievements for existing habits on first load
 function retroCheckAchievements(){
