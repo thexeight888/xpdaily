@@ -262,6 +262,11 @@
     </div>
 
     <div class="modal-field">
+      <div class="modal-label">Descrição <span>(opcional)</span></div>
+      <textarea id="habit-desc" placeholder="ex: Deitar antes das 23h sem ecrãs..." rows="2" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:0.9rem;padding:10px 12px;resize:vertical;"></textarea>
+    </div>
+
+    <div class="modal-field">
       <div class="modal-label">Tipo</div>
       <div class="type-grid" id="type-grid"></div>
     </div>
@@ -688,6 +693,7 @@ function openHabitModal(editingId){
     const h=getHabit(editingId);
     selectedEmoji=h.emoji; selectedType=h.type;
     document.getElementById('habit-name').value=h.name;
+    document.getElementById('habit-desc').value=h.desc||'';
     document.getElementById('habit-target').value=h.target||'';
     document.getElementById('habit-start').value=h.months[0].reps||'';
     const s=getMonthStart(h,0);
@@ -695,6 +701,7 @@ function openHabitModal(editingId){
   } else {
     selectedEmoji=EMOJIS[0]; selectedType='reps';
     document.getElementById('habit-name').value='';
+    document.getElementById('habit-desc').value='';
     document.getElementById('habit-target').value='';
     document.getElementById('habit-start').value='';
     const today=new Date(); document.getElementById('habit-date').value=today.toISOString().split('T')[0];
@@ -713,13 +720,14 @@ function saveHabit(){
   const dateVal=document.getElementById('habit-date').value;
   const ti=typeInfo(selectedType);
 
+  const desc=document.getElementById('habit-desc').value.trim();
   if(habitCtx.editing){
     const h=getHabit(habitCtx.editing);
-    h.name=name; h.emoji=selectedEmoji; h.type=selectedType; h.unit=ti.unit; h.target=target;
+    h.name=name; h.emoji=selectedEmoji; h.type=selectedType; h.unit=ti.unit; h.target=target; h.desc=desc;
     if(dateVal) h.months[0].manualDate=dateVal;
   } else {
     const newHabit={
-      id:uid(), name, emoji:selectedEmoji, type:selectedType, unit:ti.unit, target,
+      id:uid(), name, emoji:selectedEmoji, type:selectedType, unit:ti.unit, target, desc,
       unlockedAchievements:[],
       months:[{reps:startVal,unlocked:true,days:Array(DAYS_PER_MONTH).fill(null),notes:{},changelog:[],manualDate:dateVal||new Date().toISOString().split('T')[0]}]
     };
@@ -928,6 +936,7 @@ function renderSection(){
       </div>
     </div>
     ${changelogHTML}
+    ${habit.desc?`<div style="font-size:0.82rem;color:var(--muted);margin:0 0 12px 0;font-style:italic;padding:8px 12px;background:var(--surface);border-radius:var(--radius);border-left:3px solid var(--accent);">${habit.desc}</div>`:''}
     <div class="progress-wrap">
       <div class="progress-meta"><span>${habit.name} · ${monthLabel(activeMonth)}</span><strong>${done} / ${DAYS_PER_MONTH} dias</strong></div>
       <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--done),var(--${color}))"></div></div>
